@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"MyGoodProject/internal/db"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
-// PostHandler Обработчик POST заглушка на будущее
+// PostHandler принимает данные и отправляет запрос на запись в БД.
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Убедитесь, что запрос метод POST
 	if r.Method != http.MethodPost {
@@ -21,15 +22,29 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Пример обработки данных (выводим в консоль)
-	fmt.Printf("Полученные данные: %+v\n", data)
+	// Извлекаем данные
+	likedUser, ok1 := data["liked_user"].(string)
+	liker, ok2 := data["liker"].(string)
 
-	// Ответ клиенту
-	response := map[string]string{"message": "Это POST запрос", "received": fmt.Sprintf("%v", data)}
+	// Проверка на успешное приведение типов и пустоту строк
+	if !ok1 || !ok2 || len(likedUser) == 0 || len(liker) == 0 {
+		http.Error(w, "Некорректные данные", http.StatusBadRequest)
+		return
+	}
 
-	// Установите заголовок ответа
-	w.Header().Set("Content-Type", "application/json")
+	db.CheckAndAddUsers(likedUser, liker)
+	db.AddLike(liker, likedUser)
 
-	// Верните JSON ответ
-	json.NewEncoder(w).Encode(response)
+	//exists, err := db.СheckLikeExists(liker, likedUser)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	// Пример обработки данных (консоль)
+	fmt.Printf("Имя того, кого лайкаю: %s\n", likedUser)
+	fmt.Printf("Имя того, кто получает лайк: %s\n", liker)
+
+	// Отправим подтверждение клиенту
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Лайк успешно отправлен от %s к %s", liker, likedUser)
 }

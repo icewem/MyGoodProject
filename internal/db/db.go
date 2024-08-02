@@ -47,12 +47,57 @@ func GetData() ([]string, error) {
 	return result, nil
 }
 
-// Заготовка под добавление данных
-func AddData(name string) error {
-	query := "INSERT INTO users (name) VALUES ($1)"
-	_, err := DB.Exec(query, name)
-	if err != nil {
-		return err
+// CheckAndAddUsers Функция для проверки существования пользователей и добавления их в таблицу
+func CheckAndAddUsers(usernames ...string) error {
+	for _, username := range usernames {
+		var exists bool
+		err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&exists)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			_, err := DB.Exec("INSERT INTO users (username) VALUES ($1)", username)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+// IncrementLikesCount Функция для увеличения счетчика лайков
+func IncrementLikesCount(username string) error {
+	_, err := DB.Exec("UPDATE users SET likes_count = likes_count + 1 WHERE username = $1", username)
+	return err
+}
+
+// AddLike Функция для добавления лайка в таблицу likes
+func AddLike(liker, likedUser string) error {
+	_, err := DB.Exec("INSERT INTO likes (liker_id, liked_user_id) VALUES ((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = $2))", liker, likedUser)
+	return err
+}
+
+// Функция для проверки существования лайка
+func СheckLikeExists(likerID, likedUserID int) (bool, error) {
+	var likeExists bool
+	var userExists bool
+
+	err := DB.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1 FROM likes 
+            WHERE liker_id = $1 AND liked_user_id = $2
+        ) AS like_exists,
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = $1 AND likes_count > 0
+        ) AS user_exists;
+    `, likerID, likedUserID).Scan(&likeExists, &userExists)
+
+	if err != nil {
+		return false, err
+	}
+
+	// Возвращаем значение, которое говорит, существует ли лайк и есть ли у пользователя лайки
+	return !likeExists && userExists, nil
 }
