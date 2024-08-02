@@ -1,4 +1,5 @@
--- +go:embed
+-- +migrate Up
+-- SQL in section 'Up' is executed when this migration is applied
 CREATE TABLE likes (
                        id SERIAL PRIMARY KEY,
                        user_id INT NOT NULL,
