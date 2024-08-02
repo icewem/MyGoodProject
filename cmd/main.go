@@ -5,6 +5,7 @@ import (
 	"MyGoodProject/internal/db"
 	handler "MyGoodProject/internal/handlers"
 	"database/sql"
+	migrate "github.com/rubenv/sql-migrate"
 	"log"
 
 	"fmt"
@@ -31,6 +32,18 @@ func main() {
 
 	// Инициализация базы данных
 	db.Init(database)
+
+	migrations := migrate.FileMigrationSource{
+		Dir: "internal/migrations", //  путь к папке с миграциями
+	}
+
+	// Применяем миграции
+	_, err = migrate.Exec(database, "postgres", migrations, migrate.Up)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Миграции успешно применены!")
 
 	// Мои маршруты
 	http.HandleFunc("/get", handler.GetHandler)
